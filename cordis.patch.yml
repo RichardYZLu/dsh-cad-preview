@@ -1,0 +1,16 @@
+# dsh-cad-preview bundle patch: register the plugin row.
+#
+# `dsh plugin --profile web add dsh-cad-preview` reconciles
+# `dsh.profile.bundles` against installed packages and, seeing the
+# `dsh.bundle.patch` declaration in package.json, appends this bundle to the
+# profile stack. The profile boot then merges this patch (a single `insert` of
+# the plugin row) into the composed tree.
+#
+# Manual mount line, for a profile that predates the bundle channel:
+#
+#   - insert:
+#       - id: cad-preview
+#         name: dsh-cad-preview
+- insert:
+    - id: cad-preview
+      name: dsh-cad-preview

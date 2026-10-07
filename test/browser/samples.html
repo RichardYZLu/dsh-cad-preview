@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <title>CAD 可读性方案小样</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #14161b; color: #e6e8ee;
+        font: 13px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      /* Column layout: the model takes whatever is left, the controls take the
+         height they need. Nothing scrolls — a fixed-height control bar with
+         `overflow: auto` cut rows off and hid the rest behind a scrollbar. */
+      body { display: flex; flex-direction: column; }
+      #stage { position: relative; flex: 1 1 auto; min-height: 0; background: #14161b; }
+      #stage canvas { width: 100%; height: 100%; display: block; }
+      /* Status text floats over the model's top-left corner, so the controls
+         below never have to make room for it. */
+      #report { position: absolute; left: 12px; top: 10px; max-width: min(560px, 62%);
+        padding: 8px 12px; border: 1px solid #2a2f3a; border-radius: 8px;
+        background: rgba(15, 17, 21, .74); font-size: 12px; line-height: 1.6;
+        pointer-events: none; }
+      #bar { flex: 0 0 auto; padding: 10px 14px 12px; background: #0f1115;
+        border-top: 1px solid #2a2f3a; }
+      button, select { font: inherit; margin: 0 6px 6px 0; padding: 4px 12px; border-radius: 6px;
+        border: 1px solid #3a4150; background: #1d222b; color: inherit; cursor: pointer; }
+      button:hover { background: #262c38; }
+      button.active { background: #3b6ef5; border-color: #8fb0ff; font-weight: 600; color: #fff; }
+      code { color: #9fd0ff; }
+      .hint { opacity: .7 }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="report">加载中…</div>
+    </div>
+    <div id="bar">
+      <div>
+        <b>方案</b><span id="variants"></span>
+        <span style="margin-left:8px"><b>模型</b> <select id="models"></select></span>
+        <span id="gridtoggles" style="margin-left:8px"></span>
+      </div>
+      <div style="margin-top:6px">
+        <b>面色</b><span id="faces"></span>
+        <b style="margin-left:10px">描边</b><span id="edges"></span>
+        <b style="margin-left:10px">预览背景</b><span id="backgrounds"></span>
+      </div>
+      <div style="margin-top:4px">
+        <span class="hint">结构线固定 <b>1px、不透明</b>，缩放时线宽与深浅保持不变；
+        <b>lines</b> 用 1° 提取（保留圆柱曲面），<b>current / ao+strong</b> 用 30°</span>
+      </div>
+    </div>
+    <script type="module" src="/samples.js"></script>
+  </body>
+</html>

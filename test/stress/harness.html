@@ -1,0 +1,246 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>dsh-cad-preview stress harness</title>
+<pre id="out">running…</pre>
+<script>
+/**
+ * Driver page for `scripts/stress-browser.mjs`.
+ *
+ * Not part of the plugin and never shipped: the runner serves this file next to
+ * the *built* worker bundle (`lib/client.worker.js`), the *built* kernel wasm
+ * and one model file, so the numbers describe the artifact that ships rather
+ * than a test double.
+ *
+ * It speaks the production protocol from `src/client/occt-remote.ts` by hand —
+ * same tag, same transfer, same `limits` — and reports one JSON object with
+ * `POST /result`. A *missing* report is the failure this suite exists to catch:
+ * it means the worker never came back (a hang), which no in-process unit test
+ * can see.
+ *
+ * Do **not** run this page with Chrome's `--virtual-time-budget`: that flag
+ * replaces the clock and starves the emscripten scheduler, which produced a fake
+ * "the worker never answers" hang here once. The runner deliberately omits it.
+ */
+const PROTO = 'dsh-cad-preview/occt-worker@1'
+const q = new URLSearchParams(location.search)
+const MODE = q.get('mode') || 'probe'
+const FILE = q.get('file') || 'model.step'
+const N = Number(q.get('n') || 1)
+const W = Number(q.get('w') || 3)
+const MAXTRI = q.get('maxtri') ? Number(q.get('maxtri')) : undefined
+const BUSY_MS = Number(q.get('ms') || 300)
+
+const out = document.getElementById('out')
+const note = (line) => { out.textContent += '\n' + line }
+const heapMB = () => (performance.memory ? performance.memory.usedJSHeapSize / 1048576 : NaN)
+const round = (value) => (Number.isFinite(value) ? Math.round(value * 10) / 10 : null)
+const forceGc = () => { try { window.gc && window.gc() } catch (error) { /* no --expose-gc */ } }
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// ── the invariant this suite measures ────────────────────────────────────────
+// A 16 ms interval on the page's main thread. If a parse ran *there*, its
+// callbacks would queue behind it and the first one to run afterwards reports a
+// gap as long as the block. Reading `maxGap` needs one yield after the blocking
+// call: read it inline and it always reads 0.
+let lastTick = performance.now()
+let maxGap = 0
+setInterval(() => {
+  const now = performance.now()
+  const gap = now - lastTick
+  if (gap > maxGap) maxGap = gap
+  lastTick = now
+}, 16)
+const resetDrift = () => { maxGap = 0; lastTick = performance.now() }
+const readDrift = async () => { await sleep(60); return maxGap }
+
+const payloadMB = (payload) =>
+  (payload.positions.byteLength + (payload.normals ? payload.normals.byteLength : 0) + payload.indices.byteLength) / 1048576
+
+function spawnWorker() {
+  const state = { worker: new Worker('client.worker.js', { name: 'stress' }), pending: new Map(), id: 1, ready: false, dead: null }
+  state.worker.addEventListener('message', (event) => {
+    const data = event.data || {}
+    if (data.protocol !== PROTO) return
+    const entry = state.pending.get(data.id)
+    if (entry === undefined) return
+    state.pending.delete(data.id)
+    if (data.kernelReady === true) state.ready = true
+    if (data.ok === true) entry.resolve(data.payload)
+    else entry.reject(new Error(data.error))
+  })
+  state.worker.addEventListener('error', (event) => {
+    state.dead = event.message || 'worker error'
+    for (const entry of state.pending.values()) entry.reject(new Error(state.dead))
+    state.pending.clear()
+  })
+  return state
+}
+
+/**
+ * Post one parse job exactly the way `occt-remote.ts` does: the file bytes are
+ * transferred, the kernel bytes only ride along until the worker reports
+ * `kernelReady`.
+ */
+function parseJob(state, bytes, wasm) {
+  return new Promise((resolve, reject) => {
+    const id = state.id
+    state.id += 1
+    state.pending.set(id, { resolve, reject })
+    const copy = bytes.slice(0).buffer
+    state.worker.postMessage(
+      {
+        protocol: PROTO,
+        id,
+        type: 'parse',
+        data: copy,
+        wasmBinary: state.ready ? undefined : wasm,
+        ext: 'step',
+        limits: MAXTRI === undefined ? undefined : { maxTriangles: MAXTRI },
+      },
+      [copy],
+    )
+  })
+}
+
+async function fetchBoth() {
+  const bytes = new Uint8Array(await (await fetch(FILE)).arrayBuffer())
+  const wasm = new Uint8Array(await (await fetch('occt-import-js.wasm')).arrayBuffer())
+  return { bytes, wasm }
+}
+
+/**
+ * The path the plugin used before 0.3.2: glue evaluated in the page, kernel
+ * initialized in the page, `ReadStepFile` called on the page's main thread.
+ * Kept because it is the only way to prove the drift meter can see a blocked
+ * main thread at all — if this reports a small gap, every other number here is
+ * meaningless.
+ */
+async function baselineMainThread(bytes, wasm) {
+  const glueText = await (await fetch('client.occt.js')).text()
+  const hook = (name) => `\n        if (typeof __dshCapture === "function") __dshCapture(${name});`
+  const patched = glueText.replace(
+    /(if \(typeof exports === "object" && typeof module === "object"\)\s*\n\s*module\.exports = ([A-Za-z_$][\w$]*);)/,
+    (match, statement, name) => statement + hook(name),
+  )
+  if (patched === glueText) throw new Error('could not patch the glue tail (build changed?)')
+  let factory = null
+  const evaluate = new Function(
+    '__dshCapture', 'module', 'exports', 'require', 'window', 'self', 'globalThis', '__dirname', '__filename',
+    patched + '\n',
+  )
+  evaluate(
+    (value) => { factory = value }, { exports: {} }, {},
+    () => { throw new Error('no module table in the harness page') },
+    globalThis, globalThis, globalThis, undefined, undefined,
+  )
+  const returned = factory({ wasmBinary: wasm })
+  const settled = typeof returned?.then === 'function' ? await returned : returned
+  const kernel = typeof settled?.ReadStepFile !== 'function' && settled?.ready ? await settled.ready : settled
+  resetDrift()
+  const started = performance.now()
+  const result = kernel.ReadStepFile(new Uint8Array(bytes), null)
+  const parseMs = performance.now() - started
+  const gap = await readDrift()
+  return { parseMs: round(parseMs), maxMainThreadGap: round(gap), meshes: result?.meshes?.length ?? 0, phase: 'main-thread' }
+}
+
+async function main() {
+  const started = performance.now()
+  const heapBefore = round(heapMB())
+  note(`mode=${MODE} file=${FILE} heapBefore=${heapBefore}MB`)
+  const report = { mode: MODE, file: FILE, heapBeforeMB: heapBefore, meterAvailable: typeof performance.memory === 'object' }
+
+  if (MODE === 'busywait') {
+    resetDrift()
+    const until = performance.now() + BUSY_MS
+    while (performance.now() < until) { /* block the main thread on purpose */ }
+    report.busyMs = BUSY_MS
+    report.maxMainThreadGap = round(await readDrift())
+    return report
+  }
+
+  const { bytes, wasm } = await fetchBoth()
+  report.modelMB = round(bytes.length / 1048576)
+  report.wasmMB = round(wasm.length / 1048576)
+  note(`fetched model=${report.modelMB}MB wasm=${report.wasmMB}MB`)
+
+  if (MODE === 'baseline') {
+    Object.assign(report, await baselineMainThread(bytes, wasm))
+    return report
+  }
+
+  if (MODE === 'probe' || MODE === 'guard') {
+    const state = spawnWorker()
+    resetDrift()
+    const parseStarted = performance.now()
+    try {
+      const payload = await parseJob(state, bytes, wasm)
+      report.parseMs = round(performance.now() - parseStarted)
+      report.maxMainThreadGap = round(await readDrift())
+      report.triangles = payload.triangleCount
+      report.payloadMB = round(payloadMB(payload))
+      forceGc()
+      report.heapAfterGcMB = round(heapMB())
+      state.worker.terminate()
+    } catch (error) {
+      report.parseMs = round(performance.now() - parseStarted)
+      report.maxMainThreadGap = round(await readDrift())
+      report.error = error?.message ?? String(error)
+      state.worker.terminate()
+    }
+    return report
+  }
+
+  if (MODE === 'conc') {
+    const states = Array.from({ length: W }, () => spawnWorker())
+    resetDrift()
+    const wallStarted = performance.now()
+    const counts = await Promise.all(states.map((state) => parseJob(state, bytes, wasm).then((payload) => payload.triangleCount)))
+    report.wallMs = round(performance.now() - wallStarted)
+    report.maxMainThreadGap = round(await readDrift())
+    report.triangles = counts
+    report.workers = W
+    forceGc()
+    report.heapAfterGcMB = round(heapMB())
+    for (const state of states) state.worker.terminate()
+    return report
+  }
+
+  if (MODE === 'abort') {
+    // What closing a tab does: the viewer disposes its kernel, which terminates
+    // the worker mid-tessellation. Nothing may accumulate on the page side.
+    //
+    // The job promise is deliberately *not* awaited: a terminated worker neither
+    // answers nor raises, so it never settles — awaiting it hangs the harness
+    // (and the runner correctly reports that as a hang).
+    forceGc()
+    report.heapBeforeMB = round(heapMB())
+    for (let i = 1; i <= N; i += 1) {
+      const state = spawnWorker()
+      parseJob(state, bytes, wasm).catch(() => {})
+      await sleep(250)
+      state.worker.terminate()
+      state.pending.clear()
+      await sleep(120)
+    }
+    forceGc()
+    report.aborts = N
+    report.heapAfterGcMB = round(heapMB())
+    return report
+  }
+
+  throw new Error(`unknown mode ${MODE}`)
+}
+
+main()
+  .then((report) => {
+    report.wallMsTotal = round(performance.now())
+    note('RESULT ' + JSON.stringify(report))
+    return fetch('/result', { method: 'POST', body: JSON.stringify(report) })
+  })
+  .catch(async (error) => {
+    const report = { mode: MODE, file: FILE, harnessError: error?.message ?? String(error) }
+    note('HARNESS ERROR ' + JSON.stringify(report))
+    try { await fetch('/result', { method: 'POST', body: JSON.stringify(report) }) } catch (ignored) { /* the runner will time out */ }
+  })
+</script>

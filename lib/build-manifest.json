@@ -1,0 +1,9 @@
+{
+  "entry": "client.js",
+  "chunks": [
+    "client.occt.js"
+  ],
+  "workers": [
+    "client.worker.js"
+  ]
+}

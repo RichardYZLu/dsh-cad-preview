@@ -1,0 +1,96 @@
+{
+  "name": "dsh-cad-preview",
+  "version": "0.3.5",
+  "description": "CAD 3D model preview for dsh-better-sidebar: renders STEP/STP/IGES/BREP (OpenCascade WASM) and STL/3MF/OBJ/PLY with an orbit camera in the DSH right sidebar.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/client.worker.js",
+    "lib/occt-import-js.wasm",
+    "lib/THIRD-PARTY-NOTICES.md",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build:assets": "node scripts/sync-assets.mjs",
+    "build:client": "node scripts/build-client.mjs",
+    "build": "pnpm run build:assets && pnpm run build:client",
+    "pretest": "pnpm run build",
+    "test": "node test/smoke.mjs && node test/gizmo.mjs && node test/wiring.mjs",
+    "stress": "node scripts/stress-browser.mjs",
+    "stress:fixtures": "node scripts/make-stress-fixtures.mjs",
+    "fetch-fixtures": "node test/fixtures/fetch-fixtures.mjs",
+    "pack": "pnpm pack --pack-destination dist",
+    "verify-install": "node scripts/verify-install.mjs",
+    "pack:past": "node scripts/pack-version.mjs",
+    "test:smoke": "node test/smoke.mjs",
+    "test:gizmo": "node test/gizmo.mjs",
+    "test:wiring": "node test/wiring.mjs"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "dsh-better-sidebar",
+    "cad",
+    "step",
+    "iges",
+    "brep",
+    "stl",
+    "3mf",
+    "obj",
+    "ply",
+    "three",
+    "occt",
+    "3d-preview"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RichardYZLu/dsh-cad-preview.git"
+  },
+  "homepage": "https://github.com/RichardYZLu/dsh-cad-preview#readme",
+  "bugs": {
+    "url": "https://github.com/RichardYZLu/dsh-cad-preview/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": ">=3.18.1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12",
+    "occt-import-js": "0.0.23",
+    "@deepseek-ai/schemastery": "3.18.4",
+    "react": "^18.3.1"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  }
+}

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <title>cad-preview 网格自证</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #16181d; color: #e6e8ee;
+        font: 13px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      #stage { position: fixed; inset: 0 0 210px 0; }
+      #stage canvas { width: 100%; height: 100%; display: block; }
+      #report { position: fixed; left: 0; right: 0; bottom: 0; height: 210px; overflow: auto;
+        padding: 10px 14px; background: #0f1115; border-top: 1px solid #2a2f3a; }
+      button { font: inherit; margin-right: 6px; padding: 3px 10px; border-radius: 6px;
+        border: 1px solid #3a4150; background: #1d222b; color: inherit; cursor: pointer; }
+      .ok { color: #48d17f; } .bad { color: #ff6b6b; } code { color: #9fd0ff; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="report">加载中…</div>
+    <script type="module">
+      import * as THREE from '/three.module.js'
+      import { createViewerScene } from '/scene.js'
+
+      const reportEl = document.getElementById('report')
+      const fmt = (v) => v.map((n) => Number(n).toFixed(2)).join(', ')
+      const show = (html) => { reportEl.innerHTML = html }
+      const extra = []
+
+      const stage = document.getElementById('stage')
+      const canvas = document.createElement('canvas')
+      stage.appendChild(canvas)
+
+      const state = createViewerScene(canvas)
+      state.zUp = true
+      state.fit()
+
+      /** 把网格平面的世界姿态量出来，并把它画在页面上。 */
+      function measure() {
+        state.scene.updateMatrixWorld(true)
+        const q = state.gridHelper.getWorldQuaternion(new THREE.Quaternion())
+        // GridHelper: in-plane axes are local +X / +Z, normal is local +Y.
+        const normal = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
+        const along = new THREE.Vector3(1, 0, 0).applyQuaternion(q)
+        const across = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
+        const origin = state.gridHelper.getWorldPosition(new THREE.Vector3())
+        const half = state.gridHelper.scale.x / 2
+        const ys = [[half, 0], [0, half], [-half, 0], [0, -half]]
+          .map(([u, v]) => origin.clone().addScaledVector(along, u).addScaledVector(across, v).y)
+        const horizontal = Math.abs(Math.abs(normal.y) - 1) < 1e-6
+        const level = ys.every((y) => Math.abs(y - ys[0]) < 1e-6)
+        return { normal, origin, ys, horizontal, level }
+      }
+
+      function render(question) {
+        const m = measure()
+        show([
+          `<b>网格姿态自证</b> — 这份代码就是正在服务给你的那份（bundle 哈希已核对一致）`,
+          `<div>网格世界法向 <code>${fmt(m.normal.toArray())}</code> ` +
+            `<span class="${m.horizontal ? 'ok' : 'bad'}">${m.horizontal ? '→ 水平 ✓' : '→ 不是水平 ✗'}</span></div>`,
+          `<div>网格平面中心 <code>${fmt(m.origin.toArray())}</code> · 边长 <code>${state.gridHelper.scale.x.toFixed(0)}</code>` +
+            ` · 本地 rotation.x <code>${state.gridHelper.rotation.x.toFixed(4)}</code>（π/2=${(Math.PI / 2).toFixed(4)}）</div>`,
+          `<div>四点世界 y <code>${fmt(m.ys)}</code> ` +
+            `<span class="${m.level ? 'ok' : 'bad'}">${m.level ? '→ 共面 ✓' : '→ 不共面 ✗'}</span></div>`,
+          `<div style="margin-top:8px"><b>${question}</b></div>`,
+          `<div style="margin-top:6px">` +
+            `<button id="flat">A：网格 -90°（代码现状）</button>` +
+            `<button id="wall">B：网格 0°（竖墙）</button>` +
+            `<button id="gOnly">显示网格</button>` +
+            `<button id="dOnly">隐藏网格</button></div>`,
+          ...extra,
+        ])
+        document.getElementById('flat').onclick = () => {
+          state.gridHelper.rotation.x = -Math.PI / 2
+          state.fit()
+          extra.push('已设为 A（水平）')
+          render(question)
+        }
+        document.getElementById('wall').onclick = () => {
+          state.gridHelper.rotation.x = 0
+          state.fit()
+          extra.push('已设为 B（竖墙）')
+          render(question)
+        }
+        const apply = (showGrid, note) => {
+          state.gridHelper.visible = showGrid
+          extra.push(note)
+          render(question)
+        }
+        document.getElementById('gOnly').onclick = () => apply(true, '显示网格')
+        document.getElementById('dOnly').onclick = () => apply(false, '隐藏网格')
+      }
+
+      render('请点 A 和 B 各一次：哪一次看起来和你刚才在 DSH 侧栏里看到的一样？把按钮名字（A 或 B）告诉我即可。')
+    </script>
+  </body>
+</html>
