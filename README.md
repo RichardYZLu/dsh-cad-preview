@@ -138,12 +138,22 @@ CAD 出的 `.step` 是文本格式，DSH 的文档预览只能把它当纯文本
 ### 从 GitHub 安装（推荐）
 
 ```sh
-dsh plugin --profile web add github:RichardYZLu/dsh-cad-preview
+dsh plugin --profile web add https://github.com/RichardYZLu/dsh-cad-preview
 ```
 
 装完**重启 DSH Desktop**：插件的这两半都在启动时挂载。
 
-升级：把地址写成 `github:RichardYZLu/dsh-cad-preview#<tag>` 可锁定版本；不带 tag 拉的是默认分支上的最新提交。
+> 用**完整的 HTTPS 地址**，别用 `github:RichardYZLu/dsh-cad-preview` 简写。pnpm 会把简写解析成 `git+ssh://git@github.com/…`，在没有配 GitHub SSH key 的机器上直接 `Permission denied (publickey)` 安装失败（本机实测复现过）；HTTPS 地址对公开仓库匿名可读，任何机器都能装。
+
+升级：地址后面加 `#<tag>` 可锁定版本 —— `https://github.com/RichardYZLu/dsh-cad-preview#v0.3.5`；不带 `#` 则跟随默认分支上的最新提交。
+
+### 从 npm 安装
+
+```sh
+dsh plugin --profile web add dsh-cad-preview
+```
+
+走 npm registry，不做 git 解析，是最快的一条路。
 
 ### 从本地 tarball 安装（开发用）
 
