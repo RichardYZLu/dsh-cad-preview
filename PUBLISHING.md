@@ -151,6 +151,15 @@ node scripts/verify-install.mjs --model <某个 .step>
 8. **README 里的图用绝对 raw 地址**（`https://raw.githubusercontent.com/…`），不要用相对路径：`docs/` 不在 npm 包的 `files` 白名单里，相对路径在 npm 页面上是坏图。
 9. **`pnpm publish` 不是 pnpm 实现的，它转调 npm CLI。** 本机没有 npm，所以 `pnpm login` / `pnpm publish` 都只报 `spawnSync npm ENOENT`。要发 npm 得先临时解出 npm（见 6.1）。
 10. **新包第一次发布不会真的上线，而是进 stage 队列等人用 2FA 批准**，期间只发一个 `0.0.0-stage` 占位版本。`npm publish` 返回 `202` 看着像成功，重复发布报 `E409` 也只是"已在队列里"。批准入口在网页的 Staged Packages 一栏（见 6.4）。**这条不在 npm 的常规发布文档里，只能靠实际发一次才会发现。**
+11. **别把 npm 的「安全只读保护」当成封号。**
+    账号做过安全敏感操作（用 2FA recovery code 登录、改邮箱等）后，npm 会把它置为 **72 小时只读**。此时新建 access token 会报：
+
+    > your account has been temporarily suspended due to a recent security-sensitive action.
+
+    `suspended` 这个词很吓人，但它**不是违规封禁**：固定 72 小时、**自动解除、无需申诉、没有重新确认步骤**，期间登录/浏览/安装/下载都正常，只有发布、**管理 token**、改包可见性、改动组织成员被暂停。**已发布的包对所有人照常可用**，不受任何影响。
+    从**触发那一动作**起算 72 小时，所以触发时刻能反推解除时刻（邮箱里通常有 npm 的安全提醒）。期间**别反复重试**、更**别开小号重发**——后者容易被判定为规避风控，把 72 小时自动恢复变成真的封禁。只有 72 小时后仍被拦，才该走 https://www.npmjs.com/support。
+12. **bypass-2FA 的 token 路线有保质期，长期方案要用 OIDC。**
+    npm 已在废弃 2FA-bypass 的 Granular Access Token：**2026-08 起**不能做账号/包/组织的敏感管理操作（建删 token、改设置、改包权限等），**约 2027-01 起**连直接发布都不行，只剩「读私有包 + stage 发布（仍需人工 2FA 批准）」。所以 6.2 那套 token 只是当下能用；仓库已经在 GitHub 上，迁移目标是 [trusted publishing (OIDC)](https://docs.npmjs.com/trusted-publishers) ——配好后由 GitHub Actions 发布，本机不存任何凭据，钥匙串/`.npmrc` 的问题一并消失。
 
 ## 5. 顺带补的文档（已做）
 
