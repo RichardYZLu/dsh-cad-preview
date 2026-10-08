@@ -16,7 +16,7 @@
 | 挂载行 | 包内 `cordis.patch.yml` 自带 `insert` 行，`dsh plugin add` 会把它追加进 `dsh.profile.bundles` → **用户无需手改 profile** |
 | 运行包内容 | `files` 白名单 8 个文件，无开发残留 |
 | 许可 | MIT（`LICENSE`）；第三方声明 `lib/THIRD-PARTY-NOTICES.md`（含 OCCT 的 LGPL-2.1 + OCCT exception） |
-| 界面截图 | `docs/screenshots/`（3 张，README 用绝对 raw 地址引用，因此在 npm 上也能显示） |
+| 界面截图 | `docs/screenshots/`（2 张：默认外观 + 线框，示例模型是罗马柱；README 用绝对 raw 地址引用，因此在 npm 上也能显示） |
 | 自检 | `pnpm test`（70 项）、`node scripts/verify-install.mjs`（15 项） |
 
 ## 1. 已定的五件事
@@ -25,7 +25,7 @@
 2. **LICENSE 署名** —— `Copyright (c) 2026 Richard YZ Lu`。
 3. **是否同时发 npm** —— **已发**（`dsh-cad-preview@0.3.5`）。发布路径比预想的曲折，全过程记在第 6 节。
 4. **是否声明 `dsh-better-sidebar` 为 peer 依赖** —— **不声明**，只保留运行期探测。声明了会让没有该侧栏的机器多一条无意义的依赖警告，而挂载本来就不依赖它。
-5. **截图 2–3 张** —— 已生成到 `docs/screenshots/`（`building-ao`、`building-lines`、`parts-ao`），由 `scripts/make-screenshots.mjs` 用无头 Chrome 驱动小样页复跑。
+5. **截图 2–3 张** —— 已生成到 `docs/screenshots/`（`roman-column`、`roman-column-wireframe`，示例模型是罗马柱），由 `scripts/make-screenshots.mjs` 用无头 Chrome 驱动小样页复跑。
 
 ## 2. 操作步骤
 
@@ -170,11 +170,11 @@ node scripts/verify-install.mjs --model <某个 .step>
   node test/browser/samples.mjs --port 8100
   ```
 
-- `scripts/make-screenshots.mjs` 是本次新增的：用无头 Chrome 驱动上面这个小样页，重新生成 README 与市场条目用的三张截图到 `docs/screenshots/`。截图不是手截的，改完外观可以一键复跑。
+- `scripts/make-screenshots.mjs` 是本次新增的：用无头 Chrome 驱动上面这个小样页，重新生成 README 与市场条目用的截图到 `docs/screenshots/`。截图不是手截的，改完外观可以一键复跑。**示例模型是罗马柱**（`CAD/roman-column/roman-column.stl`），已经在 `test/browser/samples.mjs` 的模型菜单里；换模型只要给那个脚本加 `--model <任意.stl>`。
 
   ```bash
-  node scripts/make-screenshots.mjs            # 全部
-  node scripts/make-screenshots.mjs --only building-ao
+  node scripts/make-screenshots.mjs                       # 全部
+  node scripts/make-screenshots.mjs --only roman-column
   ```
 
 ## 6. 发布到 npm（已做：0.3.5）

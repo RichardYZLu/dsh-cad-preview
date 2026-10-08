@@ -18,11 +18,23 @@ const port = Number(argv[argv.indexOf('--port') + 1]) || 8100
 
 // Real geometry, deliberately: a cube makes every variant look acceptable. The
 // small one loads instantly; the larger ones show what density does to line work.
+//
+// `--model <path>` appends any extra mesh to the menu, so a look can be checked
+// against whatever part is at hand without editing this list. The paths below
+// are the local sample set; missing ones are filtered out of the menu.
 const MODELS = [
+  { name: '罗马柱（柱身凹槽）', path: '/Volumes/exSSD/DSH/CAD/roman-column/roman-column.stl' },
   { name: '构件几何（500 面）', path: '/Volumes/exSSD/DSH/image-production/cad-build/shouzhen-a-geometry/shouzhen-a-geometry.stl' },
   { name: '佛龛样本（7.2 万面）', path: '/Volumes/exSSD/DSH/image-production/cad-build/fupen-samples/fupen-samples.stl' },
   { name: '柱网骨架（稠密）', path: '/Volumes/exSSD/DSH/image-production/cad-build/shouzhen-columns-skeleton/shouzhen-columns-skeleton.stl' },
 ]
+
+for (let i = 0; i < argv.length; i += 1) {
+  if (argv[i] !== '--model' || argv[i + 1] === undefined) continue
+  const path = argv[i + 1]
+  MODELS.push({ name: basename(path), path })
+  i += 1
+}
 
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8' }
 const send = (res, body, type) => res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' }).end(body)

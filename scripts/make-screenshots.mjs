@@ -35,8 +35,8 @@ const only = argOf('--only', null)
 const keep = argv.includes('--keep')
 const serverPort = Number(argOf('--port', '8123'))
 const debugPort = Number(argOf('--debug-port', '9333'))
-const width = Number(argOf('--width', '1600'))
-const height = Number(argOf('--height', '1000'))
+const width = Number(argOf('--width', '1200'))
+const height = Number(argOf('--height', '1400'))
 const scale = Number(argOf('--scale', '2'))
 
 /**
@@ -48,26 +48,22 @@ const scale = Number(argOf('--scale', '2'))
  * (`OrbitRig.onWheel` is `radius *= exp(deltaY * 0.0012)`, so -240 is ≈ ×0.75).
  * Framing is otherwise whatever the viewer's own `fit()` produces, so these
  * images are what opening the file shows, not a staged composition.
+ *
+ * The window is portrait by default because the viewer lives in DSH's right
+ * sidebar; a wide frame would leave the model small in the middle.
  */
 const SHOTS = [
   {
-    name: 'building-ao',
-    model: 'shouzhen-columns-skeleton.stl',
+    name: 'roman-column',
+    model: 'roman-column.stl',
     variant: 'ao+strong',
-    caption: '建筑柱网 · ao+strong（默认外观）',
+    caption: '罗马柱 · ao+strong（默认外观）',
   },
   {
-    name: 'building-lines',
-    model: 'shouzhen-columns-skeleton.stl',
+    name: 'roman-column-wireframe',
+    model: 'roman-column.stl',
     variant: 'lines',
-    caption: '建筑柱网 · lines（线框）',
-  },
-  {
-    name: 'parts-ao',
-    model: 'fupen-samples.stl',
-    variant: 'ao+strong',
-    wheel: -240,
-    caption: '构件样本 · ao+strong（默认外观）',
+    caption: '罗马柱 · lines（线框）',
   },
 ]
 
