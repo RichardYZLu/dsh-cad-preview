@@ -19,13 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Bundled third-party components (see `lib/THIRD-PARTY-NOTICES.md` for the full
-licence texts):
-
-- three.js — MIT
-- occt-import-js — MIT
-- OpenCascade Technology (linked into occt-import-js) — LGPL-2.1 with the
-  OCCT exception

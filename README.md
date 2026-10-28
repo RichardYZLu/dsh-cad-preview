@@ -1,5 +1,7 @@
 # dsh-cad-preview
 
+[![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/richardyzlu/dsh-cad-preview)
+
 在 DSH 右侧栏里直接查看 3D 模型。打开文件树里的 `.step`、`.stl` 这些文件，侧栏里就是一个可以旋转、缩放、剖视的几何体，不用切到别的软件。
 
 ![罗马柱 · 默认外观](https://raw.githubusercontent.com/RichardYZLu/dsh-cad-preview/main/docs/screenshots/roman-column.png)

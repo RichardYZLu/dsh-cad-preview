@@ -1,6 +1,6 @@
 {
   "name": "dsh-cad-preview",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "CAD 3D model preview for dsh-better-sidebar: renders STEP/STP/IGES/BREP (OpenCascade WASM) and STL/3MF/OBJ/PLY with an orbit camera in the DSH right sidebar.",
   "type": "module",
   "main": "./lib/index.js",

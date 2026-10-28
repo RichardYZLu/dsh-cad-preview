@@ -9,13 +9,15 @@
 
 | 项 | 状态 |
 | --- | --- |
-| 版本 | 0.3.5（`package.json`） |
-| 仓库 | `RichardYZLu/dsh-cad-preview`（MIT，署名 `Richard YZ Lu`）——已公开，已加 `dsh-plugin` 等 8 个 topic，`find_dsh_plugin` 能搜到 |
-| npm | `dsh-cad-preview@0.3.5` 已上线（`dist-tags.latest = 0.3.5`）；新包首次发布需网页 2FA 人工批准，见第 6 节 |
+| 版本 | 仓库里是 0.3.6；npm 上 `latest` 仍是 **0.3.5**（0.3.6 待发，只为把新 README 同步到 npm 页面） |
+| 仓库 | `RichardYZLu/dsh-cad-preview`（MIT，署名 `Richard YZ Lu`）——已公开，已加 `dsh-plugin` 等 8 个 topic |
+| npm | `dsh-cad-preview@0.3.5` 已上线；新包首次发布需网页 2FA 人工批准，见第 6 节 |
+| 插件市场 | **已收录且 Verified**：https://dsh-plugin.org/plugins/richardyzlu/dsh-cad-preview —— 分类 Tools & Capabilities，收录于 2026-10-08。README 顶部已挂 `listed.svg` 徽章。**注意 slug 用全小写 owner**（`richardyzlu`），写成 `RichardYZLu` 会 404 |
+| `find_dsh_plugin` | 搜得到（走 GitHub topic `dsh-plugin` 实时搜索） |
 | 前置依赖 | **只需 DSH 本身**。装了 `dsh-better-sidebar` 就注册成它的文件查看器；只有自带侧栏就注册进 DSH 自带的文档预览。见 README「安装」一节 |
 | 挂载行 | 包内 `cordis.patch.yml` 自带 `insert` 行，`dsh plugin add` 会把它追加进 `dsh.profile.bundles` → **用户无需手改 profile** |
 | 运行包内容 | `files` 白名单 8 个文件，无开发残留 |
-| 许可 | MIT（`LICENSE`）；第三方声明 `lib/THIRD-PARTY-NOTICES.md`（含 OCCT 的 LGPL-2.1 + OCCT exception） |
+| 许可 | MIT（`LICENSE` **只放纯 MIT 正文**，第三方清单在 `lib/THIRD-PARTY-NOTICES.md`；混写会让 GitHub 判成 `NOASSERTION`，见第 4 节第 13 条） |
 | 界面截图 | `docs/screenshots/`（2 张：默认外观 + 线框，示例模型是罗马柱；README 用绝对 raw 地址引用，因此在 npm 上也能显示） |
 | 自检 | `pnpm test`（70 项）、`node scripts/verify-install.mjs`（15 项） |
 
@@ -88,9 +90,25 @@ gh repo edit RichardYZLu/dsh-cad-preview \
 
 在 GitHub 仓库页面右侧 **Topics** 里加 `dsh-plugin` 同样有效。插件的"市场"就是 **GitHub topic `dsh-plugin` 的实时搜索、按 star 排序**——没有单独的提审流程。加完 topic 后，用 `find_dsh_plugin` 工具（本机实测：加完 topic 立刻就能搜到，无需等待）应当能搜到。
 
-### 2.6 社区插件市场 dsh-plugin.org（自动收录，无需提交）
+### 2.6 社区插件市场 dsh-plugin.org（已自动收录，Verified）
 
 [dsh-plugin.org](https://dsh-plugin.org)（DSH Plugin Hub）是社区维护的插件市场，也可以装成 DSH 插件，在「设置 → 插件市场」里图形化浏览/安装。它的说明写得很清楚：**发布公开仓库 + 加 `dsh-plugin` topic，它就定期扫描并自动收录**，再人工标注分类与兼容性；另有 [提交页](https://dsh-plugin.org/submit) 可以加速。
+
+**实际结果**：2.5 加完 topic 后**当天就自动收录了**，无需提交 Issue，并被标成 Verified：
+
+```
+https://dsh-plugin.org/plugins/richardyzlu/dsh-cad-preview
+分类 Tools & Capabilities · Verified · Listed on 2026-10-08
+```
+
+两个实测注意点：
+
+1. **URL 用全小写 owner**（`richardyzlu`）。按仓库名原样写 `RichardYZLu` 会 404，很容易误判成"没被收录"——排查时先换小写再试。
+2. 收录后可以在 README 顶部挂官方徽章（模板见提交页），链接指向上面那个小写 slug 地址：
+
+   ```markdown
+   [![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/richardyzlu/dsh-cad-preview)
+   ```
 
 所以 2.5 那一步同时打通了 `find_dsh_plugin` 与这个 hub —— **没有需要单独投递的"上架申请"**。
 
@@ -160,6 +178,16 @@ node scripts/verify-install.mjs --model <某个 .step>
     从**触发那一动作**起算 72 小时，所以触发时刻能反推解除时刻（邮箱里通常有 npm 的安全提醒）。期间**别反复重试**、更**别开小号重发**——后者容易被判定为规避风控，把 72 小时自动恢复变成真的封禁。只有 72 小时后仍被拦，才该走 https://www.npmjs.com/support。
 12. **bypass-2FA 的 token 路线有保质期，长期方案要用 OIDC。**
     npm 已在废弃 2FA-bypass 的 Granular Access Token：**2026-08 起**不能做账号/包/组织的敏感管理操作（建删 token、改设置、改包权限等），**约 2027-01 起**连直接发布都不行，只剩「读私有包 + stage 发布（仍需人工 2FA 批准）」。所以 6.2 那套 token 只是当下能用；仓库已经在 GitHub 上，迁移目标是 [trusted publishing (OIDC)](https://docs.npmjs.com/trusted-publishers) ——配好后由 GitHub Actions 发布，本机不存任何凭据，钥匙串/`.npmrc` 的问题一并消失。
+13. **`LICENSE` 必须只放纯 MIT 正文，第三方清单不能附在同一个文件里。**
+    原来的 `LICENSE` 在 MIT 正文后面紧接着写了「Bundled third-party components: three.js / occt-import-js / OpenCascade…」。GitHub 的许可证匹配器要求文件是标准原文，附加段落直接让它判不出来：
+
+    ```
+    gh api repos/RichardYZLu/dsh-cad-preview/license
+    → {"key":"other","name":"Other","spdx_id":"NOASSERTION"}
+    ```
+
+    后果是连锁的：仓库侧栏显示 Other，dsh-plugin.org 的条目 `License` 一栏也跟着显示 `Other` —— 而 MIT 本身是用户判断"能不能放心用"的信号之一，白丢一个信任项。
+    而且这在法律表述上也不对：MIT 标题不能罩住同文件里列出的 LGPL 组件。**正确做法是 LICENSE 只留 MIT 原文，第三方清单单独放在 `lib/THIRD-PARTY-NOTICES.md`**（它在 `files` 里，随包分发），README 的「许可」一节指向它。改完 GitHub 才会认出 `MIT`。
 
 ## 5. 顺带补的文档（已做）
 
