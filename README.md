@@ -57,7 +57,7 @@ dsh plugin --profile web add https://github.com/RichardYZLu/dsh-cad-preview
 
 装完**重启 DSH Desktop**，插件的两半都在启动时挂载。
 
-升级：地址后面加 `#<tag>` 可锁定版本（例如 `https://github.com/RichardYZLu/dsh-cad-preview#v0.3.5`）；不带 `#` 则跟随默认分支上的最新提交。
+升级：地址后面加 `#<tag>` 可锁定版本（例如 `https://github.com/RichardYZLu/dsh-cad-preview#v0.3.6`）；不带 `#` 则跟随默认分支上的最新提交。
 
 ### 卸载
 

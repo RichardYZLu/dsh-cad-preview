@@ -10,10 +10,12 @@
 | 项 | 状态 |
 | --- | --- |
 | 版本 | 仓库里是 0.3.6；npm 上 `latest` 仍是 **0.3.5**（0.3.6 待发，只为把新 README 同步到 npm 页面） |
+| 版本锁定 | git tag **`v0.3.5`**（→ `33f940d`）与 **`v0.3.6`**（→ `9deaebb`）已推到远端。实测 `add 'https://github.com/RichardYZLu/dsh-cad-preview#v0.3.6'` 装到的就是 0.3.6（8s）——README 里"加 `#tag` 锁版本"的说法成立 |
 | 仓库 | `RichardYZLu/dsh-cad-preview`（MIT，署名 `Richard YZ Lu`）——已公开，已加 `dsh-plugin` 等 8 个 topic |
 | npm | `dsh-cad-preview@0.3.5` 已上线；新包首次发布需网页 2FA 人工批准，见第 6 节 |
 | 插件市场 | **已收录且 Verified**：https://dsh-plugin.org/plugins/richardyzlu/dsh-cad-preview —— 分类 Tools & Capabilities，收录于 2026-10-08。README 顶部已挂 `listed.svg` 徽章。**注意 slug 用全小写 owner**（`richardyzlu`），写成 `RichardYZLu` 会 404 |
 | `find_dsh_plugin` | 搜得到（走 GitHub topic `dsh-plugin` 实时搜索） |
+| DSH 兼容性 | 已在 **DSH 0.2.1-rc.2**（2026-10-28 更新后）上复验：npm 安装 1.8s、插件行进 `--dump-config`、四条路由全 200；客户端契约 `documentPreviews` 与 slot `sidebar.right.tab.document` 仍存在。0.2.1 相对开发时的 0.1.7-rc.2 是大版本跳变，**每次 DSH 大版本更新后都应重跑这组检查** |
 | 前置依赖 | **只需 DSH 本身**。装了 `dsh-better-sidebar` 就注册成它的文件查看器；只有自带侧栏就注册进 DSH 自带的文档预览。见 README「安装」一节 |
 | 挂载行 | 包内 `cordis.patch.yml` 自带 `insert` 行，`dsh plugin add` 会把它追加进 `dsh.profile.bundles` → **用户无需手改 profile** |
 | 运行包内容 | `files` 白名单 8 个文件，无开发残留 |
@@ -115,6 +117,32 @@ https://dsh-plugin.org/plugins/richardyzlu/dsh-cad-preview
 ### 2.7 可选：进入人工精选列表
 
 **https://awesome-dsh-plugin.com** 是人工维护的列表，需要去它的仓库提 PR（条目格式照现有条目：名称、一句话说明、仓库链接、`dsh plugin add …` 命令）。
+
+### 2.8 打 tag（README 那句"加 `#tag` 锁版本"靠它才成立）
+
+**只发版本不打 tag，README 里教用户锁版本的命令就是坏的。** 第一次发布时漏了这一步，`#v0.3.5` 其实哪都不指向。补法：
+
+```bash
+cd /Volumes/exSSD/DSH/DSH-Plugins/dsh-cad-preview
+# 打成 annotated tag，指向"该版本发布时的那个提交"
+git tag -a v0.3.6 9deaebb -m "dsh-cad-preview 0.3.6"
+git push origin v0.3.6
+# 一次推多个：git push origin v0.3.5 v0.3.6
+```
+
+验证远端确实有：
+
+```bash
+gh api repos/RichardYZLu/dsh-cad-preview/tags --jq '.[] | "\(.name)  \(.commit.sha[0:7])"'
+```
+
+再验一次**用户实际走的那条路**（这条命令会 `git ls-remote` 到 github.com，网络不通时会失败，别误判成 tag 有问题）：
+
+```bash
+"$NODE" "$BIN" plugin --profile tagtest add 'https://github.com/RichardYZLu/dsh-cad-preview#v0.3.6'
+```
+
+装完确认 `profiles/tagtest/node_modules/dsh-cad-preview/package.json` 里的 `version` 就是 tag 对应的版本。实测 0.3.6：8s 完成，装在 0.3.6。
 
 ## 3. 发布后的验证（别凭感觉）
 
