@@ -146,11 +146,20 @@ gh api repos/RichardYZLu/dsh-cad-preview/tags --jq '.[] | "\(.name)  \(.commit.s
 
 ## 3. 发布后的验证（别凭感觉）
 
-在一台**干净的 profile** 上验证"别人能不能装上"，而不是在自己的工作目录里试（下面这套在 0.3.5 发布时已跑通）：
+在一台**干净的 profile** 上验证"别人能不能装上"，而不是在自己的工作目录里试（这套在 0.3.5 首发、以及 DSH 升到 0.2.1-rc.2 后都跑通过）：
 
 ```bash
 NODE="$HOME/Library/Application Support/dsh-desktop/harness/.desktop-bin/node"
-BIN="/Applications/DSH Desktop.app/Contents/Resources/app.asar.unpacked/node_modules/@deepseek-ai/dsh/lib/bin.js"
+
+# CLI 的位置随 DSH 版本变过：≤0.1.x 在 app.asar.unpacked，≥0.2.1 挪进了 app.asar
+# （packed asar 用随应用分发的 Electron 版 node 可以透读）。逐个试，谁能 --version 就用谁。
+RES="/Applications/DSH Desktop.app/Contents/Resources"
+BIN=""
+for c in "$RES/app.asar.unpacked/node_modules/@deepseek-ai/dsh/lib/bin.js" \
+         "$RES/app.asar/node_modules/@deepseek-ai/dsh/lib/bin.js"; do
+  "$NODE" "$c" --version >/dev/null 2>&1 && { BIN="$c"; break; }
+done
+echo "CLI: $BIN — $("$NODE" "$BIN" --version)"
 
 # 从随应用分发的模板造一个干净 profile
 "$NODE" "$BIN" --profile publishtest --from-default-profile web --dump-config >/dev/null
