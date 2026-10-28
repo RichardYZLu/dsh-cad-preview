@@ -13,6 +13,7 @@
 | 版本锁定 | git tag **`v0.3.5`**（→ `33f940d`）与 **`v0.3.6`**（→ `9deaebb`）已推到远端。实测 `add 'https://github.com/RichardYZLu/dsh-cad-preview#v0.3.6'` 装到的就是 0.3.6（8s）——README 里"加 `#tag` 锁版本"的说法成立 |
 | 仓库 | `RichardYZLu/dsh-cad-preview`（MIT，署名 `Richard YZ Lu`）——已公开，已加 `dsh-plugin` 等 8 个 topic |
 | npm | `dsh-cad-preview@0.3.5` 已上线；新包首次发布需网页 2FA 人工批准，见第 6 节 |
+| 发布通道 | **已改为 OIDC 可信发布**（第 7 节）：workflow 写在 `.github/workflows/publish.yml`，本机不再需要任何 npm 凭据。**待 npm 网页侧配好 Trusted Publisher 后做首次发布**（新配置须在 2 天内完成首次发布，否则过期） |
 | 插件市场 | **已收录且 Verified**：https://dsh-plugin.org/plugins/richardyzlu/dsh-cad-preview —— 分类 Tools & Capabilities，收录于 2026-10-08。README 顶部已挂 `listed.svg` 徽章。**注意 slug 用全小写 owner**（`richardyzlu`），写成 `RichardYZLu` 会 404 |
 | `find_dsh_plugin` | 搜得到（走 GitHub topic `dsh-plugin` 实时搜索） |
 | DSH 兼容性 | 已在 **DSH 0.2.1-rc.2**（2026-10-28 更新后）上复验：npm 安装 1.8s、插件行进 `--dump-config`、四条路由全 200；客户端契约 `documentPreviews` 与 slot `sidebar.right.tab.document` 仍存在。0.2.1 相对开发时的 0.1.7-rc.2 是大版本跳变，**每次 DSH 大版本更新后都应重跑这组检查** |
@@ -320,3 +321,64 @@ CLI 侧 `npm stage approve <stage-id>` 理论同效，但**本机 `npm stage lis
 
 - **`npm publish` 不会替你跑 `pnpm test`。** 本包只有 `pretest`（构建），没有 `prepublishOnly`；`lib/` 是提交进仓库的构建产物，`publish` 也不会重新构建。发布前自己跑一次 `pnpm test`。
 - **版本号即发布号。** 改完 `package.json` 的 `version` 先提交再发；npm 不允许覆盖已发布的版本，要改只能发新版本号。已存在的包再发新版本**不会再触发 stage 队列**，直接上线。
+
+## 7. 用 OIDC 可信发布（当前采用的方案）
+
+第 6 节那套 token 会被 npm 逐步废掉（2026-08 起不能做账号管理、约 2027-01 起不能直接发布），而且长期 token 本身就有泄漏风险——我们这次就泄漏过一次。现在改走 **trusted publishing（OIDC）**：GitHub Actions 用一次性的短时凭据发布，**本机不存任何 npm 凭据**。
+
+workflow 已经写好在 [`.github/workflows/publish.yml`](.github/workflows/publish.yml)。
+
+### 7.1 npm 侧必须先配（网页，一次性）
+
+路径：npmjs.com → **Packages** → `dsh-cad-preview` → **Settings** → **Trusted publishing** → 选 **GitHub Actions**，填三个字段：
+
+| 字段 | 值 |
+| --- | --- |
+| Organization or user | `RichardYZLu` |
+| Repository | `dsh-cad-preview` |
+| Workflow filename | `publish.yml`（**只写文件名**，不是 `.github/workflows/publish.yml`；必须带 `.yml`） |
+| Environment name | 留空 |
+
+⚠️ **`Allowed actions` 必须勾上允许 `npm publish`。**
+npm 的规则是：**2026-09-03 之后创建的配置默认只允许 `npm stage publish`**，`npm publish` 要手动勾选。不勾的话 workflow 会跑成功到最后一步然后被 npm 拒绝，报错看起来像权限问题，很容易误判成字段填错。
+
+> 想更严格可以**故意不勾**、改让 workflow 调 `npm stage publish`，那样每次发版都要你在网页上点 Approve。当前选的是直接发布（更省事），因为本仓库发版频率很低、且是公开仓库。
+
+⚠️ **新配置必须在 2 天内完成第一次成功发布**，否则它会**过期失效且不能编辑**，只能删掉重建。所以配完就尽快触发一次发布，别先放着。
+
+### 7.2 触发发布
+
+两种方式，workflow 都支持：
+
+```bash
+# 正常发版：package.json 的 version 必须与 tag 一致（workflow 会校验，不一致直接失败）
+npm version patch --no-git-tag-version      # 或手改 package.json
+git commit -am "0.3.7" && git push origin main
+git tag -a v0.3.7 -m "dsh-cad-preview 0.3.7" && git push origin v0.3.7
+```
+
+```bash
+# 手动补发 / 重试（跳过 tag 校验，发当前默认分支的版本）
+gh workflow run publish.yml
+gh run watch                                 # 看进度
+```
+
+### 7.3 workflow 里几个不是凑数的决定
+
+- **只校验、不重新构建。** `lib/` 是入库的构建产物，CI 里 `pnpm build` 会让 npm 收到的字节和仓库里的不一致，所以直接跑三个测试套件（`smoke`/`gizmo`/`wiring`，共 70 项）来验证**已提交的那份产物**，而不是走 `pnpm test`（它的 `pretest` 会触发 build）。
+- **不用 `npm ci`。** 仓库用的是 `pnpm-lock.yaml`，没有 `package-lock.json`，`npm ci` 会直接失败；因此装 `pnpm@10` 后跑 `pnpm install --frozen-lockfile`。
+- **`npm install -g npm@latest`。** trusted publishing 要求 npm ≥ 11.5.1，node 24 自带的版本不保证够。
+- **tag 与 version 校验。** 版本号即发布号且不能覆盖，mis-tag 一次就会把错误内容发成合法版本；workflow 在 tag push 时强制两者一致。
+- **`package-manager-cache: false`。** 发布构建里用缓存可能装到过期依赖。
+
+### 7.4 发布成功之后（加固）
+
+OIDC 跑通一次之后，建议把传统 token 通道关掉：
+
+npmjs.com → 该包 **Settings** → **Publishing access** → 选 **"Require two-factor authentication and disallow tokens"** → 保存。
+
+这样即使以后有人拿到一个旧 token 也发不了包，而 trusted publisher 不受影响（它走 OIDC）。同时把本机 `~/.npmrc` 里残留的 `_authToken` 删掉——它已经失效，留着只会让每条 npm 命令先撞一次 401。
+
+### 7.5 OIDC 附带的好处：provenance
+
+从公开仓库用 OIDC 发布公开包时，npm 会**自动**生成 provenance 证明（不需要加 `--provenance`），包页面上会显示来源可验证的标记。这对"别人凭什么放心装"是有用的信号。

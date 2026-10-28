@@ -1,0 +1,71 @@
+# 用 npm trusted publishing（OIDC）发布，本机不存任何 npm 凭据。
+#
+# 触发方式两种：
+#   - push 一个 v* tag   → 正常发版流程（tag 必须与 package.json 的 version 一致）
+#   - 手动 workflow_dispatch → 补发/重试（跳过 tag 校验）
+#
+# npm 侧需要先配置 Trusted Publisher（见 PUBLISHING.md 第 7 节），三个字段是：
+#   Organization or user = RichardYZLu
+#   Repository           = dsh-cad-preview
+#   Workflow filename    = publish.yml
+# 并且必须在 Allowed actions 里允许 npm publish —— 2026-09-03 之后创建的配置默认
+# 只允许 npm stage publish，不勾这一项本 workflow 会被拒。
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  # id-token 是 OIDC 的唯一硬要求：缺了它拿不到短时凭据，npm 会回落到找一个
+  # 并不存在的 token 然后失败。
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          # 发布构建里绝不能用缓存，否则装到的可能是过期的依赖树
+          package-manager-cache: false
+
+      # trusted publishing 要求 npm >= 11.5.1；node 24 自带的版本不保证够。
+      # 同时把 pnpm 装上：仓库用的是 pnpm-lock.yaml，npm ci 找不到 lockfile。
+      - name: Install npm and pnpm
+        run: npm install --global npm@latest pnpm@10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # tag 必须指到 package.json 里的那个版本，否则会把错误的内容发成合法版本号。
+      - name: Check tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} != package.json v$version"
+            exit 1
+          fi
+          echo "tag ${GITHUB_REF_NAME} matches package.json v$version"
+
+      # 校验**仓库里已提交的**构建产物，而不是重新构建：lib/ 是入库的产物，
+      # 在这里 rebuild 会让 npm 收到的字节和仓库里的不一致。所以直接跑三个套件，
+      # 不走 pnpm test（它的 pretest 会触发 build）。
+      - name: Verify committed build artifacts
+        run: |
+          node test/smoke.mjs
+          node test/gizmo.mjs
+          node test/wiring.mjs
+
+      # OIDC 环境下 npm 自动用短时凭据，无需任何 *_AUTH_TOKEN。
+      # provenance 也会自动生成（私仓/私有包除外）。
+      - name: Publish
+        run: npm publish --access public
